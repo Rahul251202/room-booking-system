@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond...');
+@import "tailwindcss";
+
+* { font-family: 'Jost', sans-serif; }
+h1, h2, h3, h4, h5 { font-family: 'Cormorant Garamond', serif; }
+
+body {
+  background-color: #080c18;
+  color: #ddd8ce;
+}
+
+.gold-gradient {
+  background: linear-gradient(135deg, #c9a96e, #a07840);
+}
+.gold-text {
+  background: linear-gradient(135deg, #e8d5b7, #c9a96e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.glass {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.card-hover {
+  transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+.card-hover:hover {
+  transform: translateY(-8px);
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.animate-fade-up {
+  animation: fadeUp 0.6s ease both;
+}
+.shimmer {
+  background: linear-gradient(90deg, #131f34 25%, #1a2740 50%, #131f34 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}

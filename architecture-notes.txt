@@ -1,0 +1,132 @@
+================================================================
+  STAYLUX — ROOM BOOKING SYSTEM
+  Architecture Notes
+================================================================
+
+1. HOW OVERLAPPING BOOKINGS ARE PREVENTED
+------------------------------------------
+When a user tries to book a room, the backend checks the database
+BEFORE creating the booking using this SQL logic:
+
+  SELECT * FROM bookings
+  WHERE room_id = ?
+    AND status = 'confirmed'
+    AND check_in_date < requested_check_out
+    AND check_out_date > requested_check_in
+
+This is called an "overlap detection query". It catches all cases:
+  - New booking starts inside an existing booking
+  - New booking ends inside an existing booking
+  - New booking completely wraps around an existing booking
+
+If ANY row is returned, the booking is REJECTED with an error
+message like "Room not available for selected dates."
+
+Only if zero rows are returned does the system proceed to create
+the booking. This check happens inside the bookingService.js file.
+
+Additionally, the 'rooms' table has an 'is_available' flag that
+can be toggled to block a room entirely for maintenance etc.
+
+
+2. WHY THE PROJECT IS STRUCTURED THIS WAY
+------------------------------------------
+The project is split into Frontend and Backend as two separate
+applications. This is called a "separation of concerns" approach.
+
+BACKEND (Node.js + Express):
+  backend/
+    config/       -> Database connection and schema
+    controllers/  -> Handle HTTP request and response
+    routes/       -> Define API URL endpoints
+    services/     -> Core business logic (booking rules etc.)
+    middleware/   -> JWT auth checks, input validation
+    utils/        -> Shared helper functions
+
+  Why this structure?
+  - Controllers are thin — they just call services
+  - Services contain all the real logic — easy to test
+  - Middleware runs before routes — keeps auth code in one place
+  - If you swap MySQL for MongoDB later, only config/ changes
+
+FRONTEND (React + Vite):
+  frontend/
+    src/
+      api/         -> All axios HTTP calls in one place
+      components/  -> Reusable UI pieces (Navbar, RoomCard etc.)
+      context/     -> Global state (logged in user, token)
+      pages/       -> Full page views (Login, Dashboard etc.)
+
+  Why this structure?
+  - All API calls are in api/ folder — easy to update URLs
+  - Context handles auth state so every page can access it
+  - Components are reusable — RoomCard used in Dashboard
+  - Pages are dumb — they call API and render components
+
+
+3. HOW FRONTEND AND BACKEND COMMUNICATE
+-----------------------------------------
+The frontend and backend communicate using REST API over HTTP.
+
+  Step-by-step flow:
+
+  [1] User clicks "Login" in the browser
+  [2] React calls: POST http://localhost:5000/api/auth/login
+      with { email, password } as JSON body
+  [3] Express receives the request
+  [4] Middleware validates input (express-validator)
+  [5] AuthService checks email in DB, compares password with bcrypt
+  [6] If valid -> creates JWT token -> sends back { user, token }
+  [7] React saves the token in localStorage
+  [8] All future API calls include: Authorization: Bearer <token>
+  [9] Auth middleware on backend verifies the token before
+      allowing access to protected routes like /api/bookings
+
+  Authentication:
+  - Passwords are hashed with bcryptjs (never stored as plain text)
+  - JWT tokens expire in 7 days (set in .env)
+  - Token is sent in every request header automatically via
+    the axios client configured in frontend/src/api/client.js
+
+
+4. HOW TO SCALE THIS SYSTEM IN THE FUTURE
+-------------------------------------------
+The current system runs on a single server. Here is how to scale:
+
+  SHORT TERM (100-1000 users):
+  - Add Redis cache for room listings (avoid hitting DB every time)
+  - Use database indexes on room_id and dates in bookings table
+  - Add rate limiting to API (prevent spam requests)
+  - Move .env secrets to a proper secrets manager
+
+  MEDIUM TERM (1000-10,000 users):
+  - Deploy backend on multiple servers behind a Load Balancer
+    (e.g. AWS Elastic Load Balancer)
+  - Use a managed database like AWS RDS (MySQL) with read replicas
+    Read replicas handle SELECT queries, main DB handles writes
+  - Store uploaded images in AWS S3 instead of local disk
+  - Add a CDN (Cloudflare) to serve frontend files globally fast
+
+  LONG TERM (10,000+ users):
+  - Break backend into microservices:
+      auth-service    -> handles login/register only
+      booking-service -> handles bookings only
+      room-service    -> handles room listings only
+  - Use message queues (RabbitMQ or AWS SQS) so services talk
+    to each other without being directly connected
+  - Use Kubernetes to auto-scale containers based on traffic
+  - Add real-time features (WebSockets) for live availability
+  - Implement distributed locking (Redis) to prevent race
+    conditions when two users book the same room simultaneously
+
+  DATABASE SCALING SPECIFICALLY:
+  - Add index:  CREATE INDEX idx_bookings_room_dates
+                ON bookings(room_id, check_in_date, check_out_date);
+  - This makes overlap detection queries 10x faster at scale
+  - Consider database sharding by region for global hotels
+
+
+================================================================
+  Project: StayLux Room Booking System
+  Stack: Node.js + Express + MySQL + React + Vite + Tailwind CSS
+================================================================
