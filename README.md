@@ -1,3 +1,8 @@
+## Screenshots
+
+Screenshots of the application (Login, Register, Dashboard, Room Detail, My Bookings pages) are available in the `screenshot/` folder in the root of this repository.
+
+
 # StayLux — Luxury Room Booking System
 
 A full-stack hotel room booking system built with Node.js, Express,
